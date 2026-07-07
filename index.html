@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentinel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B0E14; --panel:#11151E; --panel2:#0E121A; --line:#1E2430;
+    --ink:#E8E6DF; --dim:#8B93A3; --faint:#5A6272;
+    --amber:#E8B84B; --up:#3DD68C; --down:#F0564A;
+    --display:'Space Grotesk',system-ui,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:13px;line-height:1.5;
+    background-image:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(232,184,75,.05),transparent)}
+  button{font-family:var(--display);cursor:pointer}
+  input{font-family:var(--mono)}
+  a{color:var(--ink)}
+
+  /* ---------- header rail ---------- */
+  header{display:flex;align-items:center;gap:18px;padding:16px 24px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .wordmark{font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:.22em}
+  .wordmark span{color:var(--amber)}
+  .lamp{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--dim);letter-spacing:.12em}
+  .lamp .dot{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+  .lamp.on .dot{background:var(--amber);box-shadow:0 0 10px var(--amber);animation:pulse 1.2s infinite}
+  .lamp.open .dot{background:var(--up)}
+  @keyframes pulse{50%{opacity:.35}}
+  @media (prefers-reduced-motion: reduce){.lamp.on .dot{animation:none}}
+  .spacer{flex:1}
+  .btn{background:none;border:1px solid var(--line);color:var(--ink);padding:7px 14px;font-size:11px;
+    letter-spacing:.1em;text-transform:uppercase;transition:border-color .15s}
+  .btn:hover{border-color:var(--amber);color:var(--amber)}
+  .btn.danger:hover{border-color:var(--down);color:var(--down)}
+  .stamp{font-size:11px;color:var(--faint)}
+
+  /* ---------- layout ---------- */
+  main{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(320px,1fr);gap:20px;padding:20px 24px;max-width:1500px;margin:0 auto}
+  @media (max-width:1000px){main{grid-template-columns:1fr}}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:4px}
+  .eyebrow{font-family:var(--display);font-size:11px;letter-spacing:.24em;color:var(--dim);
+    padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .eyebrow .tick{color:var(--amber)}
+  .eyebrow .count{margin-left:auto;color:var(--faint);letter-spacing:0}
+  .stack{display:flex;flex-direction:column;gap:20px;min-width:0}
+
+  /* ---------- tables ---------- */
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  th{font-family:var(--display);font-weight:500;font-size:10px;letter-spacing:.16em;color:var(--faint);
+    text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);text-transform:uppercase}
+  td{padding:9px 10px;border-bottom:1px solid var(--panel2);vertical-align:middle}
+  tr.row{cursor:pointer}
+  tr.row:hover td{background:rgba(232,184,75,.03)}
+  .sym{font-weight:600;letter-spacing:.05em}
+  .name{color:var(--faint);font-size:11px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .num{text-align:right}
+  .up{color:var(--up)} .down{color:var(--down)} .dim{color:var(--dim)}
+
+  /* signature element: center-zero sentiment gauge */
+  .gauge{width:84px;height:14px;position:relative;background:var(--panel2);border:1px solid var(--line)}
+  .gauge::after{content:'';position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line)}
+  .gauge .fill{position:absolute;top:2px;bottom:2px}
+  .gauge .fill.pos{left:50%;background:var(--up)}
+  .gauge .fill.neg{right:50%;background:var(--down)}
+
+  .chip{display:inline-block;font-family:var(--display);font-size:10px;letter-spacing:.12em;
+    padding:3px 8px;border:1px solid var(--line);color:var(--dim);white-space:nowrap}
+  .chip.buy{border-color:var(--up);color:var(--up)}
+  .chip.neg,.chip.avoid,.chip.sl{border-color:var(--down);color:var(--down)}
+  .chip.caution,.chip.watch,.chip.ext,.chip.tp{border-color:var(--amber);color:var(--amber)}
+
+  tr.detail td{background:var(--panel2);padding:12px 16px;font-size:12px;color:var(--dim)}
+  tr.detail .why{margin-bottom:8px;color:var(--ink)}
+  tr.detail .hl{display:block;margin:3px 0;color:var(--dim);text-decoration:none}
+  tr.detail .hl:hover{color:var(--amber)}
+  tr.detail .src{color:var(--faint)}
+
+  .xbtn{background:none;border:none;color:var(--faint);font-family:var(--mono);font-size:13px;cursor:pointer;padding:2px 6px}
+  .xbtn:hover{color:var(--down)}
+
+  /* ---------- paper desk ---------- */
+  .toggle{margin-left:auto;background:none;border:1px solid var(--line);color:var(--faint);
+    font-family:var(--display);font-size:10px;letter-spacing:.16em;padding:5px 12px;display:flex;align-items:center;gap:8px}
+  .toggle .tdot{width:7px;height:7px;border-radius:50%;background:var(--faint)}
+  .toggle.armed{border-color:var(--amber);color:var(--amber)}
+  .toggle.armed .tdot{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+  .acct{display:flex;gap:0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .acct .cell{flex:1;min-width:110px;padding:10px 16px;border-right:1px solid var(--panel2)}
+  .acct .cell:last-child{border-right:none}
+  .acct .lbl{font-family:var(--display);font-size:9px;letter-spacing:.18em;color:var(--faint);text-transform:uppercase}
+  .acct .val{font-size:14px;margin-top:2px}
+  .breaker{padding:10px 16px;border-bottom:1px solid var(--line);color:var(--down);font-size:11px}
+  .olog{max-height:170px;overflow-y:auto;border-top:1px solid var(--line)}
+  .olog .o{display:flex;gap:10px;padding:7px 16px;border-bottom:1px solid var(--panel2);font-size:11px;color:var(--dim)}
+  .olog .o .side{width:38px;font-family:var(--display);letter-spacing:.1em}
+  .olog .o .side.buy{color:var(--up)} .olog .o .side.sell{color:var(--down)}
+  .olog .o .st{margin-left:auto;color:var(--faint)}
+
+  /* ---------- forms ---------- */
+  .formrow{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--line);flex-wrap:wrap}
+  .formrow input{background:var(--panel2);border:1px solid var(--line);color:var(--ink);padding:7px 10px;
+    font-size:12px;min-width:0;flex:1}
+  .formrow input:focus{outline:1px solid var(--amber);outline-offset:-1px}
+  .formrow input::placeholder{color:var(--faint)}
+  .formrow .btn{flex:0 0 auto}
+
+  .empty{padding:22px 16px;color:var(--faint);font-size:12px}
+  .note{padding:10px 16px;color:var(--amber);font-size:11px;border-top:1px solid var(--line)}
+
+  /* ---------- alerts feed ---------- */
+  .feed{max-height:340px;overflow-y:auto}
+  .alert{padding:10px 16px;border-bottom:1px solid var(--panel2);border-left:2px solid var(--line)}
+  .alert.BUY{border-left-color:var(--up)}
+  .alert.SELL{border-left-color:var(--down)}
+  .alert.INFO{border-left-color:var(--amber)}
+  .alert .t{color:var(--faint);font-size:10px}
+  .alert .title{margin:2px 0;font-size:12px}
+  .alert .line{color:var(--dim);font-size:11px}
+
+  /* ---------- settings dialog ---------- */
+  dialog{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:4px;
+    padding:0;max-width:480px;width:92%}
+  dialog::backdrop{background:rgba(5,7,11,.75)}
+  .dgrid{display:grid;grid-template-columns:1fr 110px;gap:10px 14px;padding:16px;align-items:center}
+  .dgrid label{font-size:12px;color:var(--dim)}
+  .dgrid .dsub{grid-column:1/-1;font-family:var(--display);font-size:10px;letter-spacing:.2em;color:var(--amber);margin-top:6px}
+  .dgrid input{background:var(--panel2);border:1px solid var(--line);color:var(--ink);padding:6px 8px;font-size:12px;text-align:right}
+  .dfoot{display:flex;gap:10px;justify-content:flex-end;padding:14px 16px;border-top:1px solid var(--line)}
+
+  footer{padding:16px 24px 28px;color:var(--faint);font-size:11px;text-align:center;letter-spacing:.04em}
+  .errs{max-width:1500px;margin:0 auto;padding:0 24px;color:var(--down);font-size:11px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wordmark">SENTINEL<span>.</span></div>
+  <div class="lamp" id="sweepLamp"><div class="dot"></div><span id="sweepText">IDLE</span></div>
+  <div class="lamp" id="mktLamp"><div class="dot"></div><span id="mktText">MARKET —</span></div>
+  <div class="spacer"></div>
+  <span class="stamp" id="lastScan">last sweep —</span>
+  <button class="btn" onclick="scanNow()">Scan now</button>
+  <button class="btn" onclick="testAlert()">Test Discord</button>
+  <button class="btn" id="settingsBtn">Settings</button>
+</header>
+
+<div class="errs" id="errs"></div>
+
+<main>
+  <div class="stack">
+    <!-- ============ WATCHLIST ============ -->
+    <section>
+      <div class="eyebrow"><span class="tick">●</span> WATCHLIST <span class="count" id="wCount"></span></div>
+      <table>
+        <thead><tr>
+          <th>Symbol</th><th></th><th class="num">Price</th><th class="num">Today</th>
+          <th>News gauge</th><th class="num">Srcs</th><th>Verdict</th><th></th>
+        </tr></thead>
+        <tbody id="watchBody"></tbody>
+      </table>
+      <div class="empty" id="watchEmpty" style="display:none">First sweep is running — rows appear within a minute.</div>
+      <div class="formrow">
+        <input id="wlInput" placeholder="Add a ticker to watch, e.g. NVDA" maxlength="6">
+        <button class="btn" onclick="addSymbol()">Add</button>
+      </div>
+    </section>
+
+    <!-- ============ PAPER DESK ============ -->
+    <section>
+      <div class="eyebrow"><span class="tick">●</span> PAPER DESK — ALPACA (SIMULATED $)
+        <button class="toggle" id="atBtn" onclick="toggleAuto()"><span class="tdot"></span><span id="atLabel">AUTO-TRADE OFF</span></button>
+      </div>
+      <div class="breaker" id="breaker" style="display:none"></div>
+      <div class="empty" id="brokerEmpty">Not connected. Add your Alpaca <b>paper</b> keys to <code>.env</code> and restart — README Part 2 walks through it.</div>
+      <div id="brokerBody" style="display:none">
+        <div class="acct">
+          <div class="cell"><div class="lbl">Equity</div><div class="val" id="acEquity">—</div></div>
+          <div class="cell"><div class="lbl">Today</div><div class="val" id="acDay">—</div></div>
+          <div class="cell"><div class="lbl">Cash</div><div class="val" id="acCash">—</div></div>
+          <div class="cell"><div class="lbl">Buying power</div><div class="val" id="acBP">—</div></div>
+        </div>
+        <table>
+          <thead><tr>
+            <th>Sym</th><th class="num">Qty</th><th class="num">Avg</th><th class="num">Now</th>
+            <th class="num">P/L $</th><th class="num">P/L %</th><th></th>
+          </tr></thead>
+          <tbody id="paperBody"></tbody>
+        </table>
+        <div class="empty" id="paperEmpty">No open paper positions. Flip auto-trade on and let signals do it, or place a test order below.</div>
+        <div class="formrow">
+          <input id="tSym" placeholder="Ticker" maxlength="6" style="flex:0 0 80px">
+          <input id="tDollars" placeholder="$ amount" type="number" min="1" step="any" style="flex:0 0 100px">
+          <button class="btn" onclick="paperBuy()">Buy paper</button>
+          <span class="spacer"></span>
+          <button class="btn danger" onclick="paperCloseAll()">Close all</button>
+        </div>
+        <div class="olog" id="orderLog"></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="stack">
+    <!-- ============ MANUAL TRACKER ============ -->
+    <section>
+      <div class="eyebrow"><span class="tick">●</span> MANUAL TRACKER — SHARES HELD ELSEWHERE <span class="count" id="pCount"></span></div>
+      <table id="pTable">
+        <thead><tr>
+          <th>Sym</th><th class="num">Shares</th><th class="num">Paid</th><th class="num">Now</th>
+          <th class="num">P/L %</th><th>Exit status</th><th></th>
+        </tr></thead>
+        <tbody id="portBody"></tbody>
+      </table>
+      <div class="empty" id="portEmpty">Log real shares you hold in another app (like Robinhood) and Sentinel will watch your exits — alerts only, it never touches these.</div>
+      <div class="formrow">
+        <input id="pSym" placeholder="Ticker" maxlength="6" style="flex:0 0 80px">
+        <input id="pShares" placeholder="Shares" type="number" step="any" min="0" style="flex:0 0 80px">
+        <input id="pCost" placeholder="Price you paid" type="number" step="any" min="0">
+        <button class="btn" onclick="addPosition()">Track it</button>
+      </div>
+    </section>
+
+    <!-- ============ RADAR ============ -->
+    <section>
+      <div class="eyebrow"><span class="tick">●</span> MARKET RADAR — TODAY'S MOVERS <span class="count" id="rCount"></span></div>
+      <table>
+        <thead><tr><th>Sym</th><th class="num">Price</th><th class="num">Move</th><th>Filter verdict</th></tr></thead>
+        <tbody id="radarBody"></tbody>
+      </table>
+      <div class="empty" id="radarEmpty">Radar sweeps the whole market's top gainers, then runs each through the Bait Shield. Most fail — that's the point.</div>
+      <div class="note" id="radarNote" style="display:none"></div>
+    </section>
+
+    <!-- ============ ALERTS ============ -->
+    <section>
+      <div class="eyebrow"><span class="tick">●</span> ALERT FEED <span class="count" id="aCount"></span></div>
+      <div class="feed" id="alertFeed"></div>
+      <div class="empty" id="alertEmpty">Alerts appear here and in your Discord channel the moment a stock earns one.</div>
+    </section>
+  </div>
+</main>
+
+<footer>Sentinel trades a simulated Alpaca paper account only. Signals are research prompts. Nothing here is financial advice.</footer>
+
+<!-- ============ SETTINGS ============ -->
+<dialog id="dlg">
+  <div class="eyebrow"><span class="tick">●</span> RULES</div>
+  <div class="dgrid">
+    <div class="dsub">SIGNALS</div>
+    <label>Sweep watchlist every (min)</label><input id="s_scanMinutes" type="number" min="2">
+    <label>Radar sweep every (min)</label><input id="s_radarMinutes" type="number" min="15">
+    <label>Buy-watch news score ≥</label><input id="s_buyThreshold" type="number" step="0.5">
+    <label>Negative-news score ≤</label><input id="s_sellThreshold" type="number" step="0.5">
+    <label>Credible sources required</label><input id="s_minSources" type="number" min="1">
+    <label>Ignore stocks under ($)</label><input id="s_minPrice" type="number">
+    <label>Ignore market cap under ($M)</label><input id="s_minMarketCapM" type="number">
+    <label>"Too late to chase" above (%)</label><input id="s_maxChasePct" type="number">
+    <label>Take-profit at (+%)</label><input id="s_takeProfitPct" type="number">
+    <label>Stop-loss at (−%)</label><input id="s_stopLossPct" type="number">
+    <label>Alert cooldown (hours)</label><input id="s_cooldownHours" type="number">
+    <div class="dsub">PAPER AUTO-TRADING</div>
+    <label>Paper $ per buy signal</label><input id="s_tradeDollars" type="number" min="1">
+    <label>Max open positions</label><input id="s_maxPositions" type="number" min="1">
+    <label>Daily-loss breaker (%)</label><input id="s_maxDailyLossPct" type="number" step="0.5">
+  </div>
+  <div class="dfoot">
+    <button class="btn" onclick="document.getElementById('dlg').close()">Cancel</button>
+    <button class="btn" onclick="saveSettings()">Save rules</button>
+  </div>
+</dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = n => n == null || isNaN(n) ? '—' : '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const pctCell = n => n == null || isNaN(n) ? '<span class="dim">—</span>'
+  : '<span class="' + (n >= 0 ? 'up' : 'down') + '">' + (n >= 0 ? '+' : '') + n.toFixed(2) + '%</span>';
+
+const CHIP = { 'BUY WATCH':'buy', 'NEGATIVE':'neg', 'AVOID':'avoid', 'CAUTION':'caution',
+  'WATCH':'watch', 'EXTENDED':'ext', 'NEUTRAL':'', 'NO DATA':'', 'UNCHECKED':'' };
+const chip = v => '<span class="chip ' + (CHIP[v] || '') + '">' + esc(v) + '</span>';
+
+function gauge(s) {
+  const w = Math.min(Math.abs(s) / 4, 1) * 50;
+  const cls = s >= 0 ? 'pos' : 'neg';
+  return '<div class="gauge" title="news score ' + s + '"><div class="fill ' + cls + '" style="width:' + w + '%"></div></div>';
+}
+
+let expanded = new Set();
+let latest = null;
+
+async function api(method, url, body) {
+  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined });
+  return res.json().catch(() => ({}));
+}
+
+async function refresh() {
+  try { latest = await (await fetch('/api/state')).json(); } catch { return; }
+  const d = latest;
+
+  $('sweepLamp').classList.toggle('on', d.scanning);
+  $('sweepText').textContent = d.scanning ? 'SWEEPING' : 'IDLE';
+  $('mktLamp').classList.toggle('open', d.market === 'OPEN');
+  $('mktText').textContent = 'MARKET ' + d.market;
+  $('lastScan').textContent = d.lastScan ? 'last sweep ' + new Date(d.lastScan).toLocaleTimeString() : 'first sweep pending';
+  $('errs').innerHTML = (d.errors || []).map(e => '<div>! ' + esc(e) + '</div>').join('');
+
+  renderWatch(d.watch || []);
+  renderBroker(d);
+  renderPortfolio(d.portfolio || []);
+  renderRadar(d.radar || [], d.radarNote);
+  renderAlerts(d.alerts || []);
+}
+
+function renderWatch(rows) {
+  $('wCount').textContent = rows.length ? rows.length + ' tracked' : '';
+  $('watchEmpty').style.display = rows.length ? 'none' : 'block';
+  $('watchBody').innerHTML = rows.map(w => {
+    const main =
+      '<tr class="row" onclick="toggle(\'' + esc(w.symbol) + '\')">' +
+        '<td class="sym">' + esc(w.symbol) + '</td>' +
+        '<td class="name">' + esc(w.name || '') + '</td>' +
+        '<td class="num">' + money(w.price) + '</td>' +
+        '<td class="num">' + pctCell(w.changePct) + '</td>' +
+        '<td>' + gauge(w.news.sentiment) + '</td>' +
+        '<td class="num dim">' + w.news.sources.length + '</td>' +
+        '<td>' + chip(w.verdict) + '</td>' +
+        '<td><button class="xbtn" title="Remove from watchlist" onclick="event.stopPropagation();removeSymbol(\'' + esc(w.symbol) + '\')">×</button></td>' +
+      '</tr>';
+    if (!expanded.has(w.symbol)) return main;
+    const why = (w.reasons || []).map(r => '· ' + esc(r)).join('<br>') || '· No strong signal either way right now.';
+    const hls = (w.news.top || []).map(t =>
+      '<a class="hl" href="' + esc(t.url) + '" target="_blank" rel="noopener">' +
+      (t.hype ? '⚠ ' : '') + '"' + esc(t.headline) + '" <span class="src">— ' + esc(t.source) + ' (' + t.score + ')</span></a>').join('');
+    return main + '<tr class="detail"><td colspan="8"><div class="why">' + why + '</div>' + hls + '</td></tr>';
+  }).join('');
+}
+
+function toggle(sym) { expanded.has(sym) ? expanded.delete(sym) : expanded.add(sym); renderWatch(latest.watch || []); }
+
+function renderBroker(d) {
+  const b = d.broker || {};
+  const armed = d.settings.autoTrade;
+  $('atBtn').classList.toggle('armed', armed);
+  $('atLabel').textContent = armed ? 'AUTO-TRADE ON' : 'AUTO-TRADE OFF';
+  $('breaker').style.display = d.breaker ? 'block' : 'none';
+  $('breaker').textContent = d.breaker || '';
+
+  const connected = b.connected;
+  $('brokerEmpty').style.display = connected ? 'none' : 'block';
+  if (!connected && b.note) $('brokerEmpty').innerHTML = esc(b.note);
+  $('brokerBody').style.display = connected ? 'block' : 'none';
+  if (!connected) return;
+
+  const a = b.account || {};
+  const dayPct = a.lastEquity ? ((a.equity - a.lastEquity) / a.lastEquity) * 100 : null;
+  $('acEquity').textContent = money(a.equity);
+  $('acDay').innerHTML = pctCell(dayPct);
+  $('acCash').textContent = money(a.cash);
+  $('acBP').textContent = money(a.buyingPower);
+
+  const pos = b.positions || [];
+  $('paperEmpty').style.display = pos.length ? 'none' : 'block';
+  $('paperBody').innerHTML = pos.map(p =>
+    '<tr>' +
+      '<td class="sym">' + esc(p.symbol) + '</td>' +
+      '<td class="num">' + p.qty + '</td>' +
+      '<td class="num">' + money(p.avg) + '</td>' +
+      '<td class="num">' + money(p.price) + '</td>' +
+      '<td class="num ' + (p.pl >= 0 ? 'up' : 'down') + '">' + (p.pl >= 0 ? '+' : '') + p.pl.toFixed(2) + '</td>' +
+      '<td class="num">' + pctCell(p.plPct) + '</td>' +
+      '<td><button class="xbtn" title="Sell this position" onclick="paperClose(\'' + esc(p.symbol) + '\')">×</button></td>' +
+    '</tr>').join('');
+
+  $('orderLog').innerHTML = (b.orders || []).map(o =>
+    '<div class="o">' +
+      '<span class="side ' + esc(o.side) + '">' + esc(o.side).toUpperCase() + '</span>' +
+      '<span class="sym">' + esc(o.symbol) + '</span>' +
+      '<span>' + (o.dollars ? money(o.dollars) : '') + (o.fillPrice ? ' @ ' + money(o.fillPrice) : '') + '</span>' +
+      '<span class="st">' + esc(o.status) + ' · ' + new Date(o.at).toLocaleTimeString() + '</span>' +
+    '</div>').join('');
+}
+
+function renderPortfolio(rows) {
+  $('pCount').textContent = rows.length ? rows.length + ' tracked' : '';
+  $('portEmpty').style.display = rows.length ? 'none' : 'block';
+  $('pTable').style.display = rows.length ? '' : 'none';
+  $('portBody').innerHTML = rows.map(p => {
+    const st = p.status === 'TAKE-PROFIT ZONE' ? '<span class="chip tp">TAKE-PROFIT</span>'
+      : p.status === 'STOP-LOSS ZONE' ? '<span class="chip sl">STOP-LOSS</span>'
+      : '<span class="chip">' + esc(p.status) + '</span>';
+    return '<tr>' +
+      '<td class="sym">' + esc(p.symbol) + '</td>' +
+      '<td class="num">' + p.shares + '</td>' +
+      '<td class="num">' + money(p.cost) + '</td>' +
+      '<td class="num">' + money(p.price) + '</td>' +
+      '<td class="num">' + pctCell(p.plPct) + '</td>' +
+      '<td>' + st + '</td>' +
+      '<td><button class="xbtn" title="Stop tracking" onclick="removePosition(\'' + esc(p.id) + '\')">×</button></td>' +
+    '</tr>';
+  }).join('');
+}
+
+function renderRadar(rows, note) {
+  $('rCount').textContent = rows.length ? rows.length + ' screened' : '';
+  $('radarEmpty').style.display = rows.length ? 'none' : 'block';
+  $('radarNote').style.display = note ? 'block' : 'none';
+  $('radarNote').textContent = note || '';
+  $('radarBody').innerHTML = rows.map(r =>
+    '<tr>' +
+      '<td class="sym" title="' + esc(r.note) + '">' + esc(r.symbol) + '</td>' +
+      '<td class="num">' + money(r.price) + '</td>' +
+      '<td class="num">' + pctCell(r.changePct) + '</td>' +
+      '<td>' + chip(r.verdict) + ' <span class="dim" style="font-size:11px">' + esc(r.note) + '</span></td>' +
+    '</tr>').join('');
+}
+
+function renderAlerts(rows) {
+  $('aCount').textContent = rows.length ? rows.length + ' logged' : '';
+  $('alertEmpty').style.display = rows.length ? 'none' : 'block';
+  $('alertFeed').innerHTML = rows.map(a =>
+    '<div class="alert ' + esc(a.type) + '">' +
+      '<div class="t">' + new Date(a.t).toLocaleString() + '</div>' +
+      '<div class="title">' + esc(a.title) + '</div>' +
+      (a.lines || []).slice(0, 2).map(l => '<div class="line">' + esc(l) + '</div>').join('') +
+    '</div>').join('');
+}
+
+// ---------- actions ----------
+async function addSymbol() {
+  const v = $('wlInput').value.trim(); if (!v) return;
+  await api('POST', '/api/watchlist', { symbol: v });
+  $('wlInput').value = ''; refresh();
+}
+async function removeSymbol(s) { await api('DELETE', '/api/watchlist/' + s); refresh(); }
+
+async function addPosition() {
+  const body = { symbol: $('pSym').value, shares: $('pShares').value, cost: $('pCost').value };
+  const r = await api('POST', '/api/portfolio', body);
+  if (r.error) { alert(r.error); return; }
+  $('pSym').value = $('pShares').value = $('pCost').value = ''; refresh();
+}
+async function removePosition(id) { await api('DELETE', '/api/portfolio/' + id); refresh(); }
+
+async function toggleAuto() {
+  const enable = !(latest && latest.settings.autoTrade);
+  if (enable && !confirm('Turn auto-trade ON?\n\nSentinel will place PAPER trades (simulated money) on its own:\n· $' +
+    (latest ? latest.settings.tradeDollars : 500) + ' per buy signal\n· auto-sells at take-profit / stop-loss / negative news')) return;
+  const r = await api('POST', '/api/autotrade', { enabled: enable });
+  if (r.error) alert(r.error);
+  refresh();
+}
+
+async function paperBuy() {
+  const r = await api('POST', '/api/paper/buy', { symbol: $('tSym').value, dollars: $('tDollars').value });
+  if (r.error) { alert(r.error); return; }
+  $('tSym').value = $('tDollars').value = '';
+  refresh();
+}
+async function paperClose(sym) {
+  if (!confirm('Sell entire paper position in ' + sym + '?')) return;
+  const r = await api('POST', '/api/paper/close/' + sym);
+  if (r.error) alert(r.error);
+  refresh();
+}
+async function paperCloseAll() {
+  if (!confirm('Sell ALL paper positions at market?')) return;
+  const r = await api('POST', '/api/paper/closeall');
+  if (r.error) alert(r.error);
+  refresh();
+}
+
+async function scanNow() { await api('POST', '/api/scan'); setTimeout(refresh, 800); }
+async function testAlert() {
+  const r = await api('POST', '/api/test');
+  alert(r.ok ? 'Test sent — check your Discord channel.' : (r.error || 'Could not send.'));
+}
+
+const SETTING_KEYS = ['scanMinutes','radarMinutes','buyThreshold','sellThreshold','minSources',
+  'minPrice','minMarketCapM','maxChasePct','takeProfitPct','stopLossPct','cooldownHours',
+  'tradeDollars','maxPositions','maxDailyLossPct'];
+
+$('settingsBtn').addEventListener('click', () => {
+  if (latest) SETTING_KEYS.forEach(k => { $('s_' + k).value = latest.settings[k]; });
+  $('dlg').showModal();
+});
+async function saveSettings() {
+  const body = {};
+  SETTING_KEYS.forEach(k => { body[k] = $('s_' + k).value; });
+  await api('POST', '/api/settings', body);
+  $('dlg').close(); refresh();
+}
+
+$('wlInput').addEventListener('keydown', e => { if (e.key === 'Enter') addSymbol(); });
+$('pCost').addEventListener('keydown', e => { if (e.key === 'Enter') addPosition(); });
+$('tDollars').addEventListener('keydown', e => { if (e.key === 'Enter') paperBuy(); });
+
+refresh();
+setInterval(refresh, 15000);
+</script>
+</body>
+</html>
